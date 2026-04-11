@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "patterns": [
+    {
+      "pattern": "Texas A&M*",
+      "parentKey": "TAMU-MAIN",
+      "country": "",
+      "state": "",
+      "priority": 1,
+      "enabled": true
+    }
+  ]
+}

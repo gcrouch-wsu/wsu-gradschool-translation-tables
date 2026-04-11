@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validate Translation Tables - User Guide</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; font-size: 10pt; line-height: 1.35; color: #1f2937; max-width: 8.5in; margin: 0 auto; padding: 0.5in; }
+        h1 { font-size: 14pt; color: #981e32; margin: 0 0 0.25em; border-bottom: 2px solid #981e32; }
+        h2 { font-size: 11pt; margin: 0.6em 0 0.25em; color: #374151; }
+        p, li { margin: 0.2em 0; }
+        ul { margin: 0.25em 0; padding-left: 1.2em; }
+        .print-note { font-size: 9pt; color: #6b7280; margin-bottom: 0.5em; }
+        .section { margin-bottom: 0.4em; }
+        table { font-size: 9pt; border-collapse: collapse; width: 100%; margin: 0.25em 0; }
+        th, td { border: 1px solid #d1d5db; padding: 2px 6px; text-align: left; }
+        th { background: #f3f4f6; font-weight: 600; }
+        @media print {
+            @page { size: letter; margin: 0.5in; }
+            body { padding: 0; font-size: 8.5pt; line-height: 1.3; }
+            .print-note { display: none; }
+            h1 { font-size: 11pt; margin-bottom: 0.2em; }
+            h2 { font-size: 9pt; margin: 0.4em 0 0.15em; }
+            .section { margin-bottom: 0.3em; }
+        }
+    </style>
+</head>
+<body>
+    <p class="print-note">Print this page (Ctrl+P) and choose "Save as PDF" for a PDF copy.</p>
+    <h1>Validate Translation Tables - User Guide</h1>
+    <p><strong>What it does:</strong> Three workflows - <strong>Validate</strong> (check/fix existing table), <strong>Create</strong> (build new from Outcomes + myWSU), and <strong>Join Preview</strong> (join table with source data for visual verification). Requires Excel 365 or 2021+ for Validate export.</p>
+
+    <h2>Validate workflow</h2>
+    <div class="section">
+        <p><strong>1. Upload</strong> Outcomes source, Translation table, myWSU, and optional campus-family JSON rules to prefill parent keys for campus variants.</p>
+        <p><strong>2. Match Options</strong> -> pick key columns (Translation input/output), validation mode (Key only or Key + name; default is Key + name).</p>
+        <p><strong>3. Name comparison</strong> (if used): pick Outcomes/myWSU name columns, threshold (default 0.8), ambiguity gap (0.03).</p>
+        <p><strong>4. Select Columns, Keys, and Roles</strong> -> pick included columns, key columns, optional role mapping (School, City, State, Country). Include City/State for high-confidence matching.</p>
+        <p><strong>5. Validate Mappings</strong> -> review cards -> optional <strong>Bulk edit before export</strong> (context grid + suggestion dropdown + reason code + quick family chips + synced top/bottom pagination controls). The bulk-edit button is a one-time opener per run; after first click the editor stays available for that run and re-opens on re-validate, and <strong>Start Over</strong> resets it. Use <strong>Review Scope</strong> (`All review rows`, `Uploaded Translate rows only`, `Missing mappings only`) to control both in-app rows and download scope. Upload <strong>Prior Validate Workbook</strong> and/or <strong>Review Session JSON</strong> in the editor panel to resume prior work. For duplicate/one-to-many rows, suggestions are capped to top 5 location-valid matches. Optional <strong>Save session</strong>/<strong>Load session</strong> -> <strong>Download Full Report</strong>.</p>
+    </div>
+
+    <h2>What the Excel file contains</h2>
+    <div class="section">
+        <p>The Final_Translation_Table includes both:</p>
+        <ul>
+            <li><strong>Auto-matched rows</strong> (Valid and High_Confidence_Match).</li>
+            <li><strong>Rows you approve in Review_Workbench</strong> (errors, mismatches, duplicates, and missing mappings).</li>
+        </ul>
+        <p><strong>You must use Review_Workbench</strong> to decide which review rows are copied into the final table.</p>
+    </div>
+
+    <h2>Excel review order</h2>
+    <div class="section">
+        <p><strong>1. Review_Workbench</strong> (main decision sheet; sortable/filterable). C1/C2/C3 columns show candidate options inline (Key: Name - City, State, Country | Score); enter C1, C2, or C3 in Selected Candidate ID to pick.</p>
+        <ul>
+            <li><strong>Keep As-Is:</strong> copy current keys to final. Row still counts toward duplicate-key QA; use when the row does not create a duplicate.</li>
+            <li><strong>Use Suggestion:</strong> copy with effective key (Manual_Suggested_Key if you enter one, otherwise Suggested_Key from candidate selection). When candidates are blank, enter a valid myWSU key in Manual_Suggested_Key.</li>
+            <li><strong>Allow One-to-Many:</strong> copy as approved exception. Row is excluded from duplicate-key QA; use when you intentionally allow duplicate keys (e.g., many-to-one mapping).</li>
+            <li><strong>Ignore:</strong> do not copy to final.</li>
+            <li><strong>Reason Code:</strong> required for risky decisions: Use Suggestion with manual key, Allow One-to-Many, and Keep As-Is on Duplicate_Target rows.</li>
+        </ul>
+        <p><strong>Intentional many-to-one:</strong> Duplicate_Target + Keep As-Is is exempt from duplicate output QA (B14), for example Texas A&amp;M campuses to one parent key. Duplicate input (B13) and duplicate-pair (B15) checks still block.</p>
+        <p><strong>Unhide Candidate_Pool/Candidate_Reference:</strong> Right-click tab bar -> Unhide -> select sheet. Use when you need to inspect candidate details.</p>
+        <p><strong>2. Final_Translation_Table:</strong> auto-matched rows + approved review rows (not sortable directly).</p>
+        <p><strong>3. Translation_Key_Updates (What changed):</strong> only key pairs that differ from current. Use this to verify all changes before publish.</p>
+        <p><strong>4. QA_Checks_Validate:</strong> all blocking checks must pass before publish.</p>
+        <p><strong>Scope behavior:</strong> `Uploaded Translate rows only` excludes Missing_Mappings from review/export. `Missing mappings only` keeps only Missing_Mapping review rows, scopes Final_Translation_Table to missing-mapping review output, and suppresses non-missing diagnostic tabs in that workbook.</p>
+        <p><strong>Blocking QA highlights:</strong> B10 risky decisions without reason code, B13 duplicate input keys, B14 duplicate output keys (with intentional many-to-one exemption), B15 duplicate pairs.</p>
+        <p><strong>Final step before updating Outcomes Translation Table:</strong></p>
+        <ol>
+            <li>Copy Final_Translation_Table.</li>
+            <li>Paste as <strong>values only</strong> into a new sheet.</li>
+            <li>Sort and double-check the pasted values.</li>
+            <li>Only then update the Outcomes Translation Table.</li>
+        </ol>
+    </div>
+
+    <h2>Create workflow</h2>
+    <div class="section">
+        <p><strong>1. Upload</strong> Outcomes and myWSU. <strong>2. Match method</strong>: key or name (key optional in name mode). <strong>3. Select columns</strong> -> include columns, optional roles. <strong>4. Generate Translation Table</strong> -> download Excel. See Review_Instructions_Create in workbook.</p>
+    </div>
+
+    <h2>Join Preview workflow</h2>
+    <div class="section">
+        <p><strong>1. Upload</strong> Outcomes source, Translation table, and myWSU. <strong>2. Key selection</strong> -> pick Outcomes key, Translation input/output columns, and myWSU key. <strong>3. Select columns</strong> -> pick which Outcomes and myWSU columns to include. <strong>4. Generate Join Preview</strong> -> download Excel. Review the joined table to verify Outcomes and myWSU data align correctly before publish.</p>
+    </div>
+
+    <h2>Tips</h2>
+    <div class="section">
+        <p>Review by exception. Check QA before publish. Use Suggestion: verify Suggested Key/School/City/State/Country first. Re-import: upload prior Validate workbook to resume; after download, summary shows applied, conflicts, new rows, orphaned. Privacy: your uploaded files are processed locally in your browser and are not uploaded by this app; the page loads JavaScript libraries from public CDNs.</p>
+    </div>
+</body>
+</html>

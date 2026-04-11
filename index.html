@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validate Translation Tables</title>
+
+    <script src="https://cdn.tailwindcss.com?version=3.4.17"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+    <link rel="stylesheet" href="styles.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'wsu-crimson': '#981e32',
+                        'wsu-gray': '#3f3f3f',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    
+    <header class="bg-wsu-crimson text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <h1 class="text-3xl font-bold">Validate Translation Tables</h1>
+            <p class="text-gray-200 mt-2">Outcomes <-> myWSU Translation Verification</p>
+                    </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Choose a workflow</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <label class="border-2 rounded-lg p-4 cursor-pointer hover:border-wsu-crimson transition-colors">
+                    <input id="mode-validate" type="radio" name="workflow-mode" value="validate" class="mr-2" checked>
+                    <span class="font-semibold text-gray-800">Validate translation table</span>
+                    <p class="text-sm text-gray-600 mt-1">Check an existing translation table for errors.</p>
+                </label>
+                <label class="border-2 rounded-lg p-4 cursor-pointer hover:border-wsu-crimson transition-colors">
+                    <input id="mode-create" type="radio" name="workflow-mode" value="create" class="mr-2">
+                    <span class="font-semibold text-gray-800">Create translation table</span>
+                    <p class="text-sm text-gray-600 mt-1">Generate a clean table from Outcomes + myWSU.</p>
+                </label>
+                <label class="border-2 rounded-lg p-4 cursor-pointer hover:border-wsu-crimson transition-colors">
+                    <input id="mode-join-preview" type="radio" name="workflow-mode" value="join-preview" class="mr-2">
+                    <span class="font-semibold text-gray-800">Join Preview</span>
+                    <p class="text-sm text-gray-600 mt-1">Join translation table with Outcomes + myWSU for visual verification.</p>
+                </label>
+            </div>
+        </div>
+
+        <details id="how-to-accordion" class="bg-blue-50 border-l-4 border-blue-500 mb-8 rounded">
+            <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-blue-800 select-none flex items-center justify-between">
+                <span>How to use this tool</span>
+                <span class="text-xs text-blue-600">Click to expand</span>
+            </summary>
+            <div class="px-4 pb-4 text-sm text-blue-700">
+                <p class="mt-1">
+                    <a href="user-guide.html" target="_blank" rel="noopener" class="text-blue-600 hover:text-blue-800 underline font-medium">User Guide (one page)</a>
+                    <span class="text-blue-600"> - Open in new tab; use Print -> Save as PDF for a PDF copy.</span>
+                </p>
+                <div class="mt-2">
+                    <div id="instructions-validate">
+                        <p>1. Upload Outcomes source, Translation table, myWSU, and optional campus-family rules file (JSON/text/CSV/Excel) to prefill parent keys for campus variants.</p>
+                        <p>2. <strong>Match Options:</strong> Pick Translation input/output columns. Default validation mode is <strong>Key + name comparison</strong> (switch to Key only if needed).</p>
+                        <p>3. <strong>Name comparison</strong> (if used): Pick Outcomes and myWSU name columns; set threshold (default 0.8) and ambiguity gap (0.03).</p>
+                        <p>4. <strong>Select Columns, Keys, and Roles:</strong> Pick included columns; mark key columns for Outcomes and myWSU; optionally map roles (School, City, State, Country). Include City/State for high-confidence matching.</p>
+                        <p>5. Click <strong>Validate Mappings</strong>, then use <strong>Bulk edit before export</strong> for context-aware edits (quick family chips, top/bottom pagination, Apply Scope). The bulk-edit button is a one-time opener per run; after first click the editor stays available for that run and re-opens on re-validate, and <strong>Start Over</strong> resets it. Use <strong>Review Scope</strong> (`All review rows`, `Uploaded Translate rows only`, `Missing mappings only`) to control both in-app review and download output. In the editor panel, upload <strong>Prior Validate Workbook</strong> and/or <strong>Review Session JSON</strong> to resume work.</p>
+                        <p>6. Click <strong>Download Full Report</strong>.</p>
+                        <p>7. The Final_Translation_Table has <strong>auto-matched row pairs</strong> (Valid + High_Confidence_Match) in normal/all-row review scope. In <strong>Missing mappings only</strong> scope, Final_Translation_Table is scoped to missing-mapping review output. You must use <strong>Review_Workbench</strong> to set decisions for rows needing review. Set <strong>Decision</strong> (Keep As-Is, Use Suggestion, Allow One-to-Many, Ignore) and set <strong>Reason Code</strong> for risky decisions (Use Suggestion with manual key, Allow One-to-Many, Keep As-Is on Duplicate_Target rows). If you use Use Suggestion, either Suggested Key (from C1/C2/C3) or <strong>Manual_Suggested_Key</strong> must be filled, and Update Side must be Input/Output/Both. For intentional many-to-one (for example, Texas A&amp;M campuses to one parent), use Keep As-Is on Duplicate_Target rows. Use <strong>Translation_Key_Updates (What changed)</strong> to verify all key changes before publish.</p>
+                        <p>8. Excel requires 365 or 2021+. Before updating the Outcomes Translation Table: verify changes in <strong>Translation_Key_Updates (What changed)</strong> -> copy Final_Translation_Table -> paste as <strong>values only</strong> into a new sheet -> sort and double-check -> only then update. Publish only after QA_Checks_Validate blocking checks pass (including risky decisions without reason code and duplicate checks).</p>
+                    </div>
+                    <div id="instructions-create" class="hidden">
+                        <p>1. Upload Outcomes source and myWSU</p>
+                        <p>2. <strong>Match method:</strong> Key columns or Name columns (key optional in name mode)</p>
+                        <p>3. <strong>Name comparison</strong> (if used): Pick name columns; set threshold and ambiguity gap</p>
+                        <p>4. <strong>Select Columns, Keys, and Roles:</strong> Pick included columns; optionally map roles. Key columns required only for key matching</p>
+                        <p>5. Click <strong>Generate Translation Table</strong> -> download Excel</p>
+                        <p>6. See Review_Instructions_Create sheet in the workbook</p>
+                    </div>
+                    <div id="instructions-join-preview" class="hidden">
+                        <p>1. Upload Outcomes source, Translation table, and myWSU</p>
+                        <p>2. <strong>Key selection:</strong> Pick Outcomes key, Translation input/output columns, and myWSU key</p>
+                        <p>3. <strong>Select Columns:</strong> Pick which Outcomes and myWSU columns to include (e.g., name, state, country)</p>
+                        <p>4. Click <strong>Generate Join Preview</strong> -> download Excel</p>
+                        <p>5. Review the joined table to verify Outcomes and myWSU data align correctly before publish</p>
+                    </div>
+                    <p class="mt-2 font-semibold">Privacy: Your uploaded files are processed locally in your browser and are not uploaded by this app. The page loads JavaScript libraries from public CDNs.</p>
+                </div>
+            </div>
+        </details>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+
+            <div id="outcomes-upload-card" class="bg-white rounded-lg shadow-md p-6 border-2 border-dashed border-gray-300 hover:border-wsu-crimson transition-colors">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">Outcomes Source</h3>
+                    <p class="text-xs text-gray-500 mt-1">Excel or CSV</p>
+                    <div class="mt-4">
+                        <label for="outcomes-file" class="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                            Choose File
+                        </label>
+                        <input id="outcomes-file" name="outcomes-file" type="file" accept=".csv,.xlsx" class="hidden">
+                    </div>
+                    <div class="mt-2">
+                        <select id="outcomes-encoding" class="text-xs border border-gray-300 rounded px-2 py-1 text-gray-600">
+                            <option value="auto">Encoding: Auto</option>
+                            <option value="utf-8">UTF-8</option>
+                            <option value="iso-8859-1">Latin-1</option>
+                            <option value="windows-1252">Windows-1252</option>
+                        </select>
+                    </div>
+                    <div id="outcomes-status" class="mt-3 text-sm hidden">
+                        <div class="flex items-center justify-center text-green-600">
+                            <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            <span id="outcomes-filename"></span>
+                        </div>
+                        <p id="outcomes-rows" class="text-gray-600 mt-1"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="translate-upload-card" class="bg-white rounded-lg shadow-md p-6 border-2 border-dashed border-gray-300 hover:border-wsu-crimson transition-colors">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">Outcomes Translation Table</h3>
+                    <p class="text-xs text-gray-500 mt-1">Excel or CSV</p>
+                    <div class="mt-4">
+                        <label for="translate-file" class="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                            Choose File
+                        </label>
+                        <input id="translate-file" name="translate-file" type="file" accept=".xlsx,.csv" class="hidden">
+                    </div>
+                    <div class="mt-2">
+                        <select id="translate-encoding" class="text-xs border border-gray-300 rounded px-2 py-1 text-gray-600">
+                            <option value="auto">Encoding: Auto</option>
+                            <option value="utf-8">UTF-8</option>
+                            <option value="iso-8859-1">Latin-1</option>
+                            <option value="windows-1252">Windows-1252</option>
+                        </select>
+                    </div>
+                    <div id="translate-status" class="mt-3 text-sm hidden">
+                        <div class="flex items-center justify-center text-green-600">
+                            <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            <span id="translate-filename"></span>
+                        </div>
+                        <p id="translate-rows" class="text-gray-600 mt-1"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 border-2 border-dashed border-gray-300 hover:border-wsu-crimson transition-colors">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">myWSU Tables</h3>
+                    <p class="text-xs text-gray-500 mt-1">Excel or CSV</p>
+                    <div class="mt-4">
+                        <label for="wsu-org-file" class="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                            Choose File
+                        </label>
+                        <input id="wsu-org-file" name="wsu-org-file" type="file" accept=".xlsx,.csv" class="hidden">
+                    </div>
+                    <div class="mt-2">
+                        <select id="wsu-org-encoding" class="text-xs border border-gray-300 rounded px-2 py-1 text-gray-600">
+                            <option value="auto">Encoding: Auto</option>
+                            <option value="utf-8">UTF-8</option>
+                            <option value="iso-8859-1">Latin-1</option>
+                            <option value="windows-1252">Windows-1252</option>
+                        </select>
+                    </div>
+                    <div id="wsu-org-status" class="mt-3 text-sm hidden">
+                        <div class="flex items-center justify-center text-green-600">
+                            <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            <span id="wsu-org-filename"></span>
+                        </div>
+                        <p id="wsu-org-rows" class="text-gray-600 mt-1"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="campus-family-card" class="bg-white rounded-lg shadow-md p-6 border-2 border-dashed border-gray-300 hover:border-wsu-crimson transition-colors">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">Campus-Family Rules</h3>
+                    <p class="text-xs text-gray-500 mt-1">Optional - prefill parent keys</p>
+                    <p class="text-xs text-gray-500 mt-1">JSON, text, CSV, or Excel</p>
+                    <div class="mt-4">
+                        <label for="campus-family-file" class="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                            Choose File
+                        </label>
+                        <input id="campus-family-file" name="campus-family-file" type="file" accept=".json,.txt,.csv,.xlsx,.xls" class="hidden">
+                    </div>
+                    <div class="mt-2 flex items-center justify-center gap-2">
+                        <button id="campus-family-template-json-btn" type="button" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-2 py-1 rounded text-xs font-medium border border-gray-300">
+                            Download JSON Template
+                        </button>
+                        <button id="campus-family-template-csv-btn" type="button" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-2 py-1 rounded text-xs font-medium border border-gray-300">
+                            Download CSV Template
+                        </button>
+                    </div>
+                    <div id="campus-family-status" class="mt-3 text-sm hidden">
+                        <div class="flex items-center justify-center text-green-600">
+                            <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            <span id="campus-family-filename"></span>
+                        </div>
+                        <p id="campus-family-rows" class="text-gray-600 mt-1"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="column-selection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <div class="mb-6 border-b pb-5">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-gray-800">Debug & Preview</h2>
+                    <label class="flex items-center text-sm text-gray-700">
+                        <input id="debug-toggle" type="checkbox" class="mr-2">
+                        Show debug panel
+                    </label>
+                </div>
+                <div id="debug-panel" class="mt-4 hidden">
+                    <div class="flex items-center justify-end text-xs text-gray-600 mb-2">
+                        <label class="flex items-center">
+                            <input id="debug-preview-toggle" type="checkbox" class="mr-2" checked>
+                            Show preview rows
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 text-sm">
+                        <div class="border rounded p-3 bg-gray-50">
+                            <h3 class="font-medium text-gray-700 mb-2">Outcomes</h3>
+                            <div id="debug-outcomes" class="text-xs text-gray-600 whitespace-pre-wrap"></div>
+                        </div>
+                        <div class="border rounded p-3 bg-gray-50">
+                            <h3 class="font-medium text-gray-700 mb-2">Translate</h3>
+                            <div id="debug-translate" class="text-xs text-gray-600 whitespace-pre-wrap"></div>
+                        </div>
+                        <div class="border rounded p-3 bg-gray-50">
+                            <h3 class="font-medium text-gray-700 mb-2">myWSU</h3>
+                            <div id="debug-wsu" class="text-xs text-gray-600 whitespace-pre-wrap"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-6 border-b pb-5">
+                <h2 class="text-xl font-semibold text-gray-800 mb-2">Match Options</h2>
+                <p class="text-sm text-gray-500">
+                    Choose how to match Outcomes to myWSU. If matching by key, select the key columns in the column list below.
+                </p>
+
+                <div id="match-method" class="mt-4">
+                    <h3 class="font-medium text-gray-700">Match method (Create mode)</h3>
+                    <p class="text-xs text-gray-500 mb-3">
+                        Choose how to match Outcomes to myWSU. If matching by name, select name columns below.
+                    </p>
+                    <div class="flex flex-wrap gap-4 text-sm text-gray-700">
+                        <label class="flex items-center">
+                            <input id="match-method-key" type="radio" name="match-method" value="key" class="mr-2" checked>
+                            Match by key columns
+                        </label>
+                        <label class="flex items-center">
+                            <input id="match-method-name" type="radio" name="match-method" value="name" class="mr-2">
+                            Match by name columns
+                        </label>
+                    </div>
+                </div>
+                <div id="validate-name-mode" class="mt-4">
+                    <h3 class="font-medium text-gray-700">Validation mode</h3>
+                    <p class="text-xs text-gray-500 mb-3">
+                        Choose whether to validate by key only or by key + name comparison.
+                    </p>
+                    <div class="flex flex-wrap gap-4 text-sm text-gray-700">
+                        <label class="flex items-center">
+                            <input id="validate-key-only" type="radio" name="validate-name-mode" value="key" class="mr-2">
+                            Key only
+                        </label>
+                        <label class="flex items-center">
+                            <input id="validate-key-name" type="radio" name="validate-name-mode" value="key+name" class="mr-2" checked>
+                            Key + name comparison
+                        </label>
+                    </div>
+                </div>
+
+                <div id="key-match-fields" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div id="translate-input-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Translation input column</label>
+                        <select id="key-translate-input" class="w-full border border-gray-300 rounded-md p-2 text-sm">
+                            <option value="">Select column</option>
+                        </select>
+                    </div>
+                    <div id="translate-output-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Translation output column</label>
+                        <select id="key-translate-output" class="w-full border border-gray-300 rounded-md p-2 text-sm">
+                            <option value="">Select column</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div id="name-compare" class="mt-6 border-t pt-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-medium text-gray-700">Name comparison</h3>
+                        <p class="text-xs text-gray-500">
+                            Choose name columns when matching by name.
+                        </p>
+                    </div>
+                </div>
+                <details class="mt-3 text-xs text-gray-600">
+                    <summary class="cursor-pointer text-gray-600">High-confidence match rules (click to expand)</summary>
+                    <div class="mt-2 space-y-1">
+                        <p>- Parentheses or hyphen suffix locations count (e.g., "(DC)" or " - Tuscaloosa").</p>
+                        <p>- City/state matches raise confidence (including DC/Washington DC).</p>
+                        <p>- Common aliases: U/Univ/University, CC/Community College/Junior College, St/Saint, Mt/Mount.</p>
+                        <p>- System abbreviations: Cal State, UC/UMass, A&amp;M, Tech/Institute of Technology.</p>
+                    </div>
+                </details>
+                <div id="name-compare-fields" class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Outcomes name column</label>
+                        <select id="name-compare-outcomes" class="w-full border border-gray-300 rounded-md p-2 text-sm">
+                            <option value="">Select column</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">myWSU name column</label>
+                        <select id="name-compare-wsu" class="w-full border border-gray-300 rounded-md p-2 text-sm">
+                            <option value="">Select column</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Mismatch threshold</label>
+                        <input
+                            id="name-compare-threshold"
+                            type="number"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            value="0.8"
+                            class="w-full border border-gray-300 rounded-md p-2 text-sm"
+                        >
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ambiguity gap</label>
+                        <input
+                            id="name-compare-ambiguity-gap"
+                            type="number"
+                            min="0"
+                            max="0.2"
+                            step="0.01"
+                            value="0.03"
+                            class="w-full border border-gray-300 rounded-md p-2 text-sm"
+                        >
+                    </div>
+                </div>
+            </div>
+
+            <button id="toggle-columns" class="flex items-center justify-between w-full text-left mt-6 border-t pt-4">
+                <h2 class="text-xl font-semibold text-gray-800">Select Columns, Keys, and Roles</h2>
+                <svg class="h-6 w-6 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+
+            <div id="column-checkboxes" class="mt-4">
+                <div id="validation-options" class="mb-4">
+                    <label class="flex items-center text-sm text-gray-700">
+                        <input id="include-suggestions" type="checkbox" class="mr-2" checked>
+                        Include name-match suggestions in validation error sheets (optional)
+                    </label>
+                    <label class="flex items-center text-sm text-gray-700 mt-2">
+                        <input id="show-mapping-logic" type="checkbox" class="mr-2">
+                        Show mapping logic in validation export sheets (optional)
+                    </label>
+                    <p class="text-xs text-gray-500 mt-2">
+                        Mark which columns to include in exports, pick key columns when key matching, and map roles (school, city, state, country) for suggestions.
+                        Key columns cannot be assigned a role in key-matching mode.
+                    </p>
+                    <p id="create-key-help" class="text-xs text-blue-700 mt-1 hidden">
+                        Create + Match by name: key selections are optional and ignored.
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <div>
+                        <h3 class="font-medium text-gray-700 mb-3">From Outcomes Source:</h3>
+                        <div class="grid grid-cols-4 gap-2 text-xs text-gray-500 mb-2">
+                            <span>Column</span>
+                            <span>Include</span>
+                            <span>Key</span>
+                            <span class="role-col">Role</span>
+                        </div>
+                        <div id="outcomes-columns" class="space-y-2">
+                            
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="font-medium text-gray-700 mb-3">From myWSU Tables:</h3>
+                        <div class="grid grid-cols-4 gap-2 text-xs text-gray-500 mb-2">
+                            <span>Column</span>
+                            <span>Include</span>
+                            <span>Key</span>
+                            <span class="role-col">Role</span>
+                        </div>
+                        <div id="wsu-org-columns" class="space-y-2">
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="validate-action" class="text-center mb-8">
+            <button id="validate-btn" disabled class="bg-gray-400 text-white px-8 py-3 rounded-lg text-lg font-semibold shadow-lg cursor-not-allowed transition-all">
+                Validate Mappings
+            </button>
+            <p id="validation-message" class="mt-2 text-sm text-gray-600"></p>
+        </div>
+
+        <div id="generate-action" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-lg font-semibold text-gray-800 mb-2">Generate Translation Table</h2>
+            <p class="text-sm text-gray-600 mb-4">
+                Use Outcomes + myWSU only. Select the key columns in the column list below, then generate a clean Input/Output table and
+                a separate error analysis that flags missing values.
+            </p>
+            <div class="text-center">
+                <button id="generate-btn" disabled class="bg-gray-400 text-white px-8 py-3 rounded-lg text-lg font-semibold shadow-lg cursor-not-allowed transition-all inline-flex items-center">
+                    Generate Translation Table
+                </button>
+                <p id="generate-message" class="mt-2 text-sm text-gray-600"></p>
+            </div>
+        </div>
+
+        <div id="join-preview-action" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-lg font-semibold text-gray-800 mb-2">Join Preview</h2>
+            <p class="text-sm text-gray-600 mb-4">
+                Join your translation table with Outcomes and myWSU source data. Key-only matching. One row per translate row.
+            </p>
+            <div class="text-center">
+                <button id="join-preview-btn" disabled class="bg-gray-400 text-white px-8 py-3 rounded-lg text-lg font-semibold shadow-lg cursor-not-allowed transition-all inline-flex items-center">
+                    Generate Join Preview
+                </button>
+                <p id="join-preview-message" class="mt-2 text-sm text-gray-600"></p>
+            </div>
+        </div>
+
+        <div id="loading" class="hidden text-center py-8">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-wsu-crimson"></div>
+            <p id="loading-message" class="mt-4 text-gray-600">Analyzing mappings...</p>
+            <div id="loading-progress" class="mt-4 max-w-xl mx-auto hidden">
+                <div class="flex items-center justify-between text-xs text-gray-500 mb-2">
+                    <span id="loading-stage">Preparing...</span>
+                    <span id="loading-percent">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div id="loading-bar" class="h-2 bg-wsu-crimson transition-all" style="width: 0%;"></div>
+                </div>
+                <div class="text-xs text-gray-500 mt-2">Please keep this tab open until the run completes.</div>
+            </div>
+        </div>
+
+        <div id="results" class="hidden">
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+
+                <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600 uppercase">Total Mappings</p>
+                            <p id="total-mappings" class="text-3xl font-bold text-gray-800">0</p>
+                        </div>
+                        <svg class="h-12 w-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600 uppercase">Valid Mappings</p>
+                            <p id="valid-count" class="text-3xl font-bold text-green-600">0</p>
+                            <p id="valid-percentage" class="text-sm text-gray-600">0%</p>
+                        </div>
+                        <svg class="h-12 w-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600 uppercase">Errors Found</p>
+                            <p id="error-count" class="text-3xl font-bold text-red-600">0</p>
+                            <p id="error-percentage" class="text-sm text-gray-600">0%</p>
+                            <p class="text-xs text-gray-500">Errors exclude one-to-many groupings</p>
+                        </div>
+                        <svg class="h-12 w-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600 uppercase">Data Quality</p>
+                            <p id="quality-score" class="text-3xl font-bold text-gray-800">0%</p>
+                            <p class="text-sm text-gray-600">Overall Score</p>
+                        </div>
+                        <svg class="h-12 w-12 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Error Distribution</h2>
+                <canvas id="error-chart" height="100"></canvas>
+            </div>
+
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                <label class="flex items-center text-sm text-gray-700">
+                    <input id="show-all-errors" type="checkbox" class="mr-2">
+                    Show all errors in cards
+                </label>
+                <label class="flex items-center text-sm text-gray-700">
+                    <input id="show-unresolved-errors-only" type="checkbox" class="mr-2" checked>
+                    Show unresolved errors only (based on in-app decisions)
+                </label>
+                <label class="flex items-center text-sm text-gray-700">
+                    <input id="show-logic-preview" type="checkbox" class="mr-2">
+                    Show mapping logic preview before export
+                </label>
+            </div>
+
+            <div id="logic-preview-panel" class="hidden bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
+                    <h3 class="text-base font-semibold text-gray-800">Mapping Logic Preview</h3>
+                    <p id="logic-preview-summary" class="text-xs text-gray-500"></p>
+                </div>
+                <div class="overflow-x-auto max-h-96 border border-gray-200 rounded">
+                    <table class="min-w-full divide-y divide-gray-200 bg-white">
+                        <thead class="bg-gray-100 sticky top-0">
+                            <tr>
+                                <th class="py-2 px-3 text-left text-xs font-medium text-gray-700 uppercase">#</th>
+                                <th class="py-2 px-3 text-left text-xs font-medium text-gray-700 uppercase">Source key</th>
+                                <th class="py-2 px-3 text-left text-xs font-medium text-gray-700 uppercase">Target key</th>
+                                <th class="py-2 px-3 text-left text-xs font-medium text-gray-700 uppercase">Classification</th>
+                                <th class="py-2 px-3 text-left text-xs font-medium text-gray-700 uppercase">Mapping logic</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logic-preview-body" class="divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="error-details" class="space-y-6 mb-8">
+                
+            </div>
+
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-6 mb-8 rounded">
+                <h3 class="text-lg font-semibold text-blue-900 mb-4">Error Reporting Logic</h3>
+
+                <div class="space-y-4 text-sm text-blue-800">
+                    <div>
+                        <strong class="text-blue-700">Definition:</strong>
+                        <p class="mt-1"><strong>Not found</strong> = Translate key value exists, but is not present in the source key list (Outcomes or myWSU). Existing translate tables are assumed to have complete key pairs.</p>
+                    </div>
+
+                    <div>
+                        <strong class="text-red-700">Input Keys Not Found in Outcomes:</strong>
+                        <p class="mt-1">Translate input key value exists but is not a valid Outcomes key (data entry error, stale key, or wrong key column selection).</p>
+                    </div>
+
+                    <div>
+                        <strong class="text-red-700">Output Keys Not Found in myWSU:</strong>
+                        <p class="mt-1">Translate output key value exists but is not a valid myWSU key (data entry error, stale key, or wrong key column selection).</p>
+                    </div>
+                    <div>
+                        <strong class="text-red-700">Likely Stale Output Keys:</strong>
+                        <p class="mt-1">Output key is missing in myWSU, but one high-confidence replacement key was found using name/location evidence.</p>
+                    </div>
+
+                    <div>
+                        <strong class="text-orange-700">Duplicate Target Keys (Many-to-One):</strong>
+                        <p class="mt-1">Multiple different source keys map to the same target key, merging multiple Outcomes records into one myWSU record.</p>
+                    </div>
+
+                    <div>
+                        <strong class="text-orange-700">Duplicate Source Keys (One-to-Many):</strong>
+                        <p class="mt-1">A single source key maps to multiple target keys, creating conflicting mappings.</p>
+                    </div>
+
+                    <div>
+                        <strong class="text-yellow-700">Name Mismatches:</strong>
+                        <p class="mt-1">Names in Outcomes Source don't match names in myWSU (below the similarity threshold). Review these mappings to confirm they are correct.</p>
+                    </div>
+                    <div>
+                        <strong class="text-yellow-700">Ambiguous Matches:</strong>
+                        <p class="mt-1">Names are close to multiple candidates within the ambiguity gap. Tighten the gap to flag more ambiguous cases, or raise the threshold to be stricter overall.</p>
+                    </div>
+
+                    <div>
+                        <strong class="text-blue-700">Missing Mappings (Sheet: Missing_Mappings):</strong>
+                        <p class="mt-1">High-confidence Outcomes-to-myWSU name/location pairs where the translate input and/or output is missing. Use this sheet to add likely missing mappings.</p>
+                    </div>
+                </div>
+
+                <div class="mt-4 p-4 bg-white rounded border border-blue-200">
+                    <p class="text-sm text-gray-700">
+                        <strong>Key Point:</strong> The app validates <strong>your Translation Table</strong> as the integration map.
+                        System check catches blank keys first; validation then flags key lookup and mapping-quality errors.
+                        Fix these errors in your source system to ensure reliable data sync between Outcomes and myWSU.
+                    </p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <div class="flex items-center justify-between gap-3 mb-3">
+                    <h3 class="text-lg font-semibold text-gray-800">Matching Rules + Examples</h3>
+                    <label class="flex items-center text-sm text-gray-700">
+                        <input id="show-matching-rules" type="checkbox" class="mr-2">
+                        Show rules and examples
+                    </label>
+                </div>
+                <div id="matching-rules-panel" class="hidden">
+                    <div class="text-sm text-gray-700 space-y-2">
+                        <p><strong>Abbreviations/aliases:</strong> Common short forms are expanded (e.g., U -> University, CC -> Community College, Cal State -> California State).</p>
+                        <p><strong>Location evidence:</strong> City/state/country fields, city-in-name, and parenthetical or hyphen suffix location tokens are used to confirm matches.</p>
+                        <p><strong>High-confidence override:</strong> If location rules confirm a match, it can be accepted even when similarity is below threshold.</p>
+                    </div>
+                    <div id="matching-examples" class="mt-4">
+                        <p class="text-xs text-gray-500">Examples from this run will appear after validation.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="bulk-edit-panel" class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 hidden lg:relative lg:left-1/2 lg:-translate-x-1/2 lg:w-[calc(100vw-2rem)]">
+                <h3 class="text-base font-semibold text-gray-800 mb-2">In-app review and bulk apply before export</h3>
+                <p class="text-sm text-gray-600 mb-3">Review context inline (Outcomes/myWSU names + location), set Decision/Reason/Suggestion, then bulk apply to selected or filtered rows.</p>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+                    <div id="prior-validate-card" class="bg-white rounded-lg border border-gray-200 p-3">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-900">Prior Validate Workbook</h4>
+                                <p class="text-xs text-gray-500 mt-0.5">Optional - re-apply decisions from a previous Validate run</p>
+                            </div>
+                            <label for="prior-validate-file" class="cursor-pointer inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50">
+                                Choose File
+                            </label>
+                            <input id="prior-validate-file" name="prior-validate-file" type="file" accept=".xlsx" class="hidden">
+                        </div>
+                        <div id="prior-validate-status" class="mt-2 text-xs hidden">
+                            <div class="text-green-600 font-medium">
+                                <span id="prior-validate-filename"></span>
+                            </div>
+                            <p id="prior-validate-rows" class="text-gray-600 mt-0.5"></p>
+                        </div>
+                    </div>
+                    <div id="session-upload-card" class="bg-white rounded-lg border border-gray-200 p-3">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-900">Review Session JSON</h4>
+                                <p class="text-xs text-gray-500 mt-0.5">Optional - load a saved in-app review session</p>
+                            </div>
+                            <label for="session-upload-file" class="cursor-pointer inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50">
+                                Choose File
+                            </label>
+                            <input id="session-upload-file" name="session-upload-file" type="file" accept=".json" class="hidden">
+                        </div>
+                        <div id="session-upload-status" class="mt-2 text-xs hidden">
+                            <div class="text-green-600 font-medium">
+                                <span id="session-upload-filename"></span>
+                            </div>
+                            <p id="session-upload-rows" class="text-gray-600 mt-0.5"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-6 gap-3 mb-3">
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Filter Error Type</label>
+                        <select id="bulk-filter-error-type" class="border border-gray-300 rounded px-2 py-1 text-sm w-full">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Filter Decision</label>
+                        <select id="bulk-filter-decision" class="border border-gray-300 rounded px-2 py-1 text-sm w-full">
+                            <option value="">All</option>
+                            <option value="Keep As-Is">Keep As-Is</option>
+                            <option value="Use Suggestion">Use Suggestion</option>
+                            <option value="Allow One-to-Many">Allow One-to-Many</option>
+                            <option value="Ignore">Ignore</option>
+                            <option value="(blank)">Blank only</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Outcomes Name Contains</label>
+                        <input id="bulk-filter-outcomes-name" type="text" class="border border-gray-300 rounded px-2 py-1 text-sm w-full" placeholder="e.g. Texas A&amp;M">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Current myWSU Name Contains</label>
+                        <input id="bulk-filter-wsu-name" type="text" class="border border-gray-300 rounded px-2 py-1 text-sm w-full" placeholder="e.g. University">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Review Scope</label>
+                        <select id="bulk-filter-review-scope" class="border border-gray-300 rounded px-2 py-1 text-sm w-full">
+                            <option value="all" selected>All review rows</option>
+                            <option value="translation_only">Uploaded Translate rows only</option>
+                            <option value="missing_only">Missing mappings only</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <label class="inline-flex items-center text-sm text-gray-700">
+                            <input id="bulk-apply-selected-only" type="checkbox" class="mr-2">
+                            Apply to selected rows only
+                        </label>
+                    </div>
+                </div>
+
+                <div id="bulk-load-progress" class="hidden mb-3">
+                    <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
+                        <span id="bulk-load-progress-text">Loading review rows...</span>
+                        <span id="bulk-load-progress-percent">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="bulk-load-progress-bar" class="bg-wsu-crimson h-2 rounded-full transition-all duration-200" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-6 gap-3 mb-3">
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Apply Decision</label>
+                        <select id="bulk-apply-decision" class="border border-gray-300 rounded px-2 py-1 text-sm w-full">
+                            <option value="">(no change)</option>
+                            <option value="Keep As-Is">Keep As-Is</option>
+                            <option value="Use Suggestion">Use Suggestion</option>
+                            <option value="Allow One-to-Many">Allow One-to-Many</option>
+                            <option value="Ignore">Ignore</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Apply Reason Code</label>
+                        <select id="bulk-apply-reason-code" class="border border-gray-300 rounded px-2 py-1 text-sm w-full">
+                            <option value="">(no change)</option>
+                            <option value="Campus consolidation">Campus consolidation</option>
+                            <option value="Data steward approved">Data steward approved</option>
+                            <option value="Manual correction">Manual correction</option>
+                            <option value="Name match">Name match</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Apply Candidate ID</label>
+                        <select id="bulk-apply-candidate-id" class="border border-gray-300 rounded px-2 py-1 text-sm w-full">
+                            <option value="">(no change)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Apply Manual Key</label>
+                        <input id="bulk-apply-manual-key" type="text" placeholder="Optional" class="border border-gray-300 rounded px-2 py-1 text-sm w-full">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Apply Scope</label>
+                        <select id="bulk-apply-scope" class="border border-gray-300 rounded px-2 py-1 text-sm w-full">
+                            <option value="filtered">All filtered rows</option>
+                            <option value="page">Current page only</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button id="bulk-apply-btn" class="bg-wsu-crimson hover:bg-red-800 text-white px-4 py-2 rounded text-sm font-medium w-full">Apply</button>
+                    </div>
+                    <div class="flex items-end">
+                        <button id="bulk-clear-selected-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded text-sm font-medium w-full">Clear selected</button>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500 mb-2">
+                    <span><span id="bulk-edit-row-count">0</span> rows total</span>
+                    <span><span id="bulk-edit-filter-count">0</span> rows filtered</span>
+                    <span><span id="bulk-edit-selected-count">0</span> rows selected</span>
+                    <span><span id="bulk-edit-reviewed-count">0</span> reviewed</span>
+                    <button id="bulk-select-filtered-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded text-xs font-medium">Select filtered</button>
+                    <button id="bulk-deselect-filtered-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded text-xs font-medium">Deselect filtered</button>
+                    <button id="bulk-mark-reviewed-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded text-xs font-medium">Mark filtered reviewed</button>
+                    <button id="bulk-clear-reviewed-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded text-xs font-medium">Clear reviewed (filtered)</button>
+                    <button id="bulk-save-session-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded text-xs font-medium">Save session</button>
+                    <label for="bulk-load-session-file" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded text-xs font-medium cursor-pointer">Load session</label>
+                    <input id="bulk-load-session-file" type="file" accept=".json" class="hidden">
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 text-xs text-gray-600 mb-2">
+                    <span class="font-medium">Quick family filters:</span>
+                    <button type="button" class="bulk-quick-chip bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded text-xs font-medium" data-outcomes-name="Texas A&amp;M">Texas A&amp;M</button>
+                    <button type="button" class="bulk-quick-chip bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded text-xs font-medium" data-outcomes-name="Troy University">Troy University</button>
+                    <button type="button" class="bulk-quick-chip bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded text-xs font-medium" data-outcomes-name="University of California">University of California</button>
+                    <button type="button" class="bulk-quick-chip bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded text-xs font-medium" data-outcomes-name="California State">California State</button>
+                    <button id="bulk-quick-clear-btn" type="button" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-2 py-1 rounded text-xs font-medium border border-gray-300">Clear</button>
+                </div>
+
+                <div class="text-xs text-gray-500 mb-2">
+                    Use filters + pagination to work through large review sets. Review Scope controls both what you see and what is included in download output.
+                </div>
+                <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600 mb-2 border border-gray-200 rounded bg-white px-2 py-2">
+                    <div class="flex items-center gap-2">
+                        <button id="bulk-page-prev-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded text-xs font-medium">Prev</button>
+                        <button id="bulk-page-next-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded text-xs font-medium">Next</button>
+                        <span id="bulk-page-status">Page 1 of 1</span>
+                        <span><span id="bulk-page-range">0-0</span> shown</span>
+                    </div>
+                    <label class="inline-flex items-center gap-1 text-xs text-gray-600">
+                        Page size
+                        <select id="bulk-page-size" class="border border-gray-300 rounded px-1 py-0.5 text-xs">
+                            <option value="100">100</option>
+                            <option value="200" selected>200</option>
+                            <option value="400">400</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="overflow-x-auto border border-gray-200 rounded bg-white">
+                    <table class="w-full text-sm table-fixed">
+                        <thead class="bg-gray-100 sticky top-0">
+                            <tr>
+                                <th class="py-1 px-2 text-left">Select</th>
+                                <th class="py-1 px-2 text-left">Reviewed</th>
+                                <th class="py-1 px-2 text-left">Error</th>
+                                <th class="py-1 px-2 text-left">Subtype</th>
+                                <th class="py-1 px-2 text-left">Outcomes (Name / State / Country)</th>
+                                <th class="py-1 px-2 text-left">Current myWSU (Name / State / Country)</th>
+                                <th class="py-1 px-2 text-left">Effective myWSU (Preview)</th>
+                                <th class="py-1 px-2 text-left">Input Key</th>
+                                <th class="py-1 px-2 text-left">Output Key</th>
+                                <th class="py-1 px-2 text-left">Decision</th>
+                                <th class="py-1 px-2 text-left">Reason</th>
+                                <th class="py-1 px-2 text-left">Suggested myWSU</th>
+                                <th class="py-1 px-2 text-left">Manual Key</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bulk-edit-tbody"></tbody>
+                    </table>
+                </div>
+                <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600 mt-2 border border-gray-200 rounded bg-white px-2 py-2">
+                    <div class="flex items-center gap-2">
+                        <button id="bulk-page-prev-btn-bottom" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded text-xs font-medium">Prev</button>
+                        <button id="bulk-page-next-btn-bottom" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded text-xs font-medium">Next</button>
+                        <span id="bulk-page-status-bottom">Page 1 of 1</span>
+                        <span><span id="bulk-page-range-bottom">0-0</span> shown</span>
+                    </div>
+                    <label class="inline-flex items-center gap-1 text-xs text-gray-600">
+                        Page size
+                        <select id="bulk-page-size-bottom" class="border border-gray-300 rounded px-1 py-0.5 text-xs">
+                            <option value="100">100</option>
+                            <option value="200" selected>200</option>
+                            <option value="400">400</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center justify-center gap-3">
+                <button id="bulk-edit-toggle-btn" class="inline-flex items-center justify-center h-12 min-w-[220px] px-6 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg text-base font-semibold shadow-lg transition-colors">Bulk edit before export</button>
+                <button id="download-btn" class="inline-flex items-center justify-center h-12 min-w-[220px] px-6 bg-wsu-crimson hover:bg-red-800 text-white rounded-lg text-base font-semibold shadow-lg transition-colors">
+                    <svg class="h-6 w-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Download Full Report
+                </button>
+                <button id="reset-btn" class="inline-flex items-center justify-center h-12 min-w-[220px] px-6 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-base font-semibold shadow-lg transition-colors">
+                    Start Over
+                </button>
+            </div>
+            <div id="download-progress" class="mt-4 hidden">
+                <div class="text-sm text-gray-600 mb-2" id="download-progress-text">Preparing download...</div>
+                <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div id="download-progress-bar" class="h-full bg-wsu-crimson transition-all" style="width: 0%;"></div>
+                </div>
+                <div class="text-xs text-gray-500 mt-2">Please keep this tab open until the download finishes.</div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-gray-800 text-white mt-16 py-6">
+        <div class="container mx-auto px-4 text-center">
+            <p>Graduate School | Washington State University</p>
+            <p class="text-xs text-gray-400 mt-1">Your uploaded files are processed locally in your browser and are not uploaded by this app. This page loads JavaScript libraries from public CDNs.</p>
+        </div>
+    </footer>
+
+    <script src="validation.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
