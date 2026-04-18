@@ -1,5 +1,5 @@
 ﻿{
-    "name":  "outcomes-translation-tables",
+    "name":  "wsu-gradschool-translation-tables",
     "version":  "1.0.0",
     "description":  "Export and edit Outcomes translation tables from pasted data",
     "private":  true,
@@ -35,10 +35,10 @@
                         },
     "repository":  {
                        "type":  "git",
-                       "url":  "git+https://github.com/gcrouch-wsu/outcomes-translation-tables.git"
+                       "url":  "git+https://github.com/gcrouch-wsu/wsu-gradschool-translation-tables.git"
                    },
     "bugs":  {
-                 "url":  "https://github.com/gcrouch-wsu/outcomes-translation-tables/issues"
+                 "url":  "https://github.com/gcrouch-wsu/wsu-gradschool-translation-tables/issues"
              },
-    "homepage":  "https://github.com/gcrouch-wsu/outcomes-translation-tables#readme"
+    "homepage":  "https://github.com/gcrouch-wsu/wsu-gradschool-translation-tables#readme"
 }

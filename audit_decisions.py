@@ -19,7 +19,7 @@ def normalize_key(k):
     return s
 
 def main():
-    xlsx_path = Path(r"C:\Python Projects\wsu-gradschool-tools\WSU_Mapping_Validation_Report_gjc.xlsx")
+    xlsx_path = Path(r"C:\Python Projects\wsu-gradschool-translation-tables\WSU_Mapping_Validation_Report_gjc.xlsx")
     if not xlsx_path.exists():
         print(f"File not found: {xlsx_path}")
         sys.exit(1)
