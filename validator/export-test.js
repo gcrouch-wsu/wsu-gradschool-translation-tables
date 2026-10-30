@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const workerPath = path.join(__dirname, 'export-worker.js');
+const workerPath = path.join(__dirname, '..', 'public', 'validate', 'export-worker.js');
 const workerCode = fs.readFileSync(workerPath, 'utf8');
 
 let failures = 0;
@@ -192,7 +192,7 @@ function createHarness() {
             }
             const scriptPath = path.isAbsolute(scriptRef)
                 ? scriptRef
-                : path.join(__dirname, scriptRef);
+                : path.join(__dirname, '..', 'public', 'validate', scriptRef);
             const code = fs.readFileSync(scriptPath, 'utf8');
             vm.runInContext(code, vmContext, { filename: scriptPath });
         });

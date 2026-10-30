@@ -7,6 +7,7 @@ Export and edit **Outcomes translation tables** from pasted data. This is a **Ne
 ## What it does
 
 - Work with translation table data (including Excel-oriented flows via **xlsx** / **jszip** where used in the app).
+- **Translation table validator** at `/validate`: validate an existing Outcomes-to-myWSU translation table, create a new one, or preview the join before publishing. It is a static page that runs entirely in the browser; uploaded files are not sent to the server. See [validator/USER_GUIDE.md](validator/USER_GUIDE.md).
 
 ## Requirements
 
@@ -37,8 +38,9 @@ Typical layout at repo root:
 
 ```
 wsu-gradschool-translation-tables/
-|-- app/
-|-- components/          # if present
+|-- app/                 # Next.js translation tables app
+|-- public/validate/     # Translation table validator (static page, served at /validate)
+|-- validator/           # Validator tests, user guide, QA reports, and audit script
 |-- package.json
 |-- next.config.js
 |-- tailwind.config.ts
@@ -55,16 +57,13 @@ wsu-gradschool-translation-tables/
 | `npm run lint` | ESLint |
 | `npm run format` | Prettier write |
 | `npm run checkfmt` | Prettier check |
+| `npm run test:validator` | Validator checks, export tests, and UI smoke tests |
 
 ## Deployment
 
-### Current production
+Production is the Vercel project `wsu-gradschool-translation-tables`, deployed from `main` of this repository with the repository root as the app root (https://wsu-gradschool-translation-tables.vercel.app). The validator is at `/validate` on the same site.
 
-If this app is still deployed from an older Vercel project, the hostname may predate the current repository name.
-
-### This repository
-
-Deploy from **this** repo with **repository root** as the app root. Target: **Railway** or any Node host that runs `npm run build` and `npm run start` with `PORT` set.
+Any Node host that runs `npm run build` and `npm run start` with `PORT` set also works.
 
 ## Related tools
 

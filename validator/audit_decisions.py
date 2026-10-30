@@ -19,7 +19,10 @@ def normalize_key(k):
     return s
 
 def main():
-    xlsx_path = Path(r"C:\Python Projects\wsu-gradschool-translation-tables\WSU_Mapping_Validation_Report_gjc.xlsx")
+    if len(sys.argv) != 2:
+        print("Usage: python validator/audit_decisions.py <Validate report .xlsx>")
+        sys.exit(2)
+    xlsx_path = Path(sys.argv[1])
     if not xlsx_path.exists():
         print(f"File not found: {xlsx_path}")
         sys.exit(1)

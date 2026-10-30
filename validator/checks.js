@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const validationPath = path.join(__dirname, 'validation.js');
+const validationPath = path.join(__dirname, '..', 'public', 'validate', 'validation.js');
 const validationCode = fs.readFileSync(validationPath, 'utf8');
 
 const context = {
@@ -164,13 +164,13 @@ runCheck('fieldEvidence: lower when country disagrees', () => {
     assert.ok(ev < 0.5, `Expected < 0.5, got ${ev}`);
 });
 
-const helpersPath = path.join(__dirname, 'validation-export-helpers.js');
+const helpersPath = path.join(__dirname, '..', 'public', 'validate', 'validation-export-helpers.js');
 const helpersCode = fs.readFileSync(helpersPath, 'utf8');
 const helpersContext = { module: { exports: {} }, require: () => {} };
 vm.createContext(helpersContext);
 vm.runInContext(helpersCode, helpersContext, { filename: helpersPath });
 const helpers = helpersContext.module.exports;
-const exportWorkerPath = path.join(__dirname, 'export-worker.js');
+const exportWorkerPath = path.join(__dirname, '..', 'public', 'validate', 'export-worker.js');
 const exportWorkerCode = fs.readFileSync(exportWorkerPath, 'utf8');
 
 runCheck('validation-export-helpers: OUTPUT_NOT_FOUND_SUBTYPE has three values', () => {

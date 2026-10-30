@@ -5,8 +5,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const appPath = path.join(__dirname, 'app.js');
-const indexPath = path.join(__dirname, 'index.html');
+const appPath = path.join(__dirname, '..', 'public', 'validate', 'app.js');
+const indexPath = path.join(__dirname, '..', 'public', 'validate', 'index.html');
 const appCode = fs.readFileSync(appPath, 'utf8');
 const indexHtml = fs.readFileSync(indexPath, 'utf8');
 

@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
     "lint": "next lint",
+    "test:validator": "node validator/checks.js && node validator/export-test.js && node validator/ui-smoke-test.js",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,css,md}\"",
     "checkfmt": "prettier -c \"**/*.{ts,tsx,js,jsx,css,md}\""
   },
